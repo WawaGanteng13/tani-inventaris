@@ -2,7 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../db/database.dart';
+import '../export/export.dart';
 import '../models/item.dart';
 import 'input_screen.dart';
 
@@ -54,6 +59,53 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
     _reload();
   }
 
+  Future<void> _exportMenu() async {
+    final fmt = await showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final f in ['xlsx', 'pdf', 'docx'])
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: Text(f.toUpperCase()),
+                subtitle: Text('Inventaris lengkap sebagai .$f'),
+                onTap: () => Navigator.of(c).pop(f),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (fmt == null || !mounted) return;
+    try {
+      final items = await InvDb.all();
+      if (!mounted) return;
+      if (items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Belum ada data untuk diekspor.')));
+        return;
+      }
+      final bytes = fmt == 'pdf'
+          ? await buildPdf(items)
+          : fmt == 'docx'
+              ? buildDocx(items)
+              : buildXlsx(items);
+      final dir = await getTemporaryDirectory();
+      if (!mounted) return;
+      final path = p.join(dir.path, exportFileName(fmt));
+      await File(path).writeAsBytes(bytes);
+      await SharePlus.instance.share(ShareParams(files: [XFile(path)]));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Dibagikan: ${p.basename(path)}')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal mengekspor: $e')));
+    }
+  }
+
   String _rp(int n) => 'Rp ${n.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
 
@@ -70,6 +122,11 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
             icon: const Icon(Icons.refresh),
             tooltip: 'Muat ulang',
             onPressed: _reload,
+          ),
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Ekspor',
+            onPressed: _exportMenu,
           ),
         ],
         bottom: PreferredSize(
