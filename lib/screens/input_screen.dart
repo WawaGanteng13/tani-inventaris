@@ -14,7 +14,10 @@ import '../models/item.dart';
 /// Layar input sekali-jalan: kamera inline (tak pernah pindah layar),
 /// jepret beruntun + voice-note + harga, satu tombol simpan.
 class InputScreen extends StatefulWidget {
-  const InputScreen({super.key});
+  const InputScreen({super.key, this.existing});
+
+  /// Item yang diubah; null = mode catat baru.
+  final InvItem? existing;
 
   @override
   State<InputScreen> createState() => _InputScreenState();
@@ -43,6 +46,15 @@ class _InputScreenState extends State<InputScreen> {
   @override
   void initState() {
     super.initState();
+    final ex = widget.existing;
+    if (ex != null) {
+      _nama.text = ex.nama;
+      _jenis.text = ex.jenis;
+      _ukuran.text = ex.ukuran;
+      _harga.text = _fmtRp(ex.hargaRp.toString());
+      _photos.addAll(ex.photoPaths);
+      _voicePath = ex.voicePath;
+    }
     _initCamera();
   }
 
@@ -56,7 +68,7 @@ class _InputScreenState extends State<InputScreen> {
       final ctrl = CameraController(
           cams.firstWhere((c) => c.lensDirection == CameraLensDirection.back,
               orElse: () => cams.first),
-          ResolutionPreset.medium,
+          ResolutionPreset.veryHigh,
           enableAudio: false);
       await ctrl.initialize();
       if (!mounted) return;
@@ -172,7 +184,9 @@ class _InputScreenState extends State<InputScreen> {
     try {
       final media = [..._photos];
       if (_videoPath != null) media.add(_videoPath!);
-      await InvDb.insert(InvItem(
+      final ex = widget.existing;
+      final item = InvItem(
+        id: ex?.id,
         nama: _nama.text.trim(),
         jenis: _jenis.text.trim(),
         ukuran: _ukuran.text.trim(),
@@ -180,25 +194,39 @@ class _InputScreenState extends State<InputScreen> {
             int.tryParse(_harga.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
         photoPaths: media,
         voicePath: _voicePath,
-        createdAt: DateTime.now(),
-      ));
+        source: ex?.source ?? 'manual',
+        createdAt: ex?.createdAt ?? DateTime.now(),
+      );
+      if (ex?.id != null) {
+        await InvDb.update(item);
+      } else {
+        await InvDb.insert(item);
+      }
+    } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+      return;
     }
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     final cam = _cam;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Catat Tanaman')),
+    return PopScope(
+      canPop: !_saving,
+      child: Scaffold(
+      appBar: AppBar(
+          title: Text(
+              widget.existing == null ? 'Catat Tanaman' : 'Ubah Tanaman')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           AspectRatio(
-            aspectRatio: 4 / 3,
+            aspectRatio: 3 / 4,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -224,7 +252,14 @@ class _InputScreenState extends State<InputScreen> {
                       )
                     : cam == null || !cam.value.isInitialized
                         ? const Center(child: CircularProgressIndicator())
-                        : CameraPreview(cam),
+                        : FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: 720,
+                              height: 960,
+                              child: CameraPreview(cam),
+                            ),
+                          ),
               ),
             ),
           ),
@@ -363,7 +398,11 @@ class _InputScreenState extends State<InputScreen> {
             onPressed: _saving ? null : _save,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(_saving ? 'Menyimpan…' : 'Simpan ke Inventaris'),
+              child: Text(_saving
+                  ? 'Menyimpan…'
+                  : (widget.existing == null
+                      ? 'Simpan ke Inventaris'
+                      : 'Simpan Perubahan')),
             ),
           ),
           const SizedBox(height: 8),
@@ -372,6 +411,7 @@ class _InputScreenState extends State<InputScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+      ),
       ),
     );
   }

@@ -7,10 +7,15 @@ import '../models/item.dart';
 /// SQLite lokal (app-private). Skema v1 milik tani-inventaris.
 class InvDb {
   static Database? _db;
+  static Future<Database>? _opening;
 
-  static Future<Database> open() async {
+  static Future<Database> open() {
     final existing = _db;
-    if (existing != null) return existing;
+    if (existing != null) return Future.value(existing);
+    return _opening ??= _openInternal().whenComplete(() => _opening = null);
+  }
+
+  static Future<Database> _openInternal() async {
     final dir = await getApplicationDocumentsDirectory();
     final db = await openDatabase(
       p.join(dir.path, 'tani_inventaris.db'),
@@ -34,6 +39,9 @@ CREATE TABLE items(
 
   static Future<int> insert(InvItem item) async =>
       (await open()).insert('items', item.toMap());
+
+  static Future<int> update(InvItem item) async => (await open())
+      .update('items', item.toMap(), where: 'id = ?', whereArgs: [item.id]);
 
   static Future<List<InvItem>> all({String query = ''}) async {
     final db = await open();

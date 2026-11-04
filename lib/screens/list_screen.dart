@@ -14,23 +14,45 @@ class ListScreen extends StatefulWidget {
   State<ListScreen> createState() => _ListScreenState();
 }
 
-class _ListScreenState extends State<ListScreen> {
+class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
   final _q = TextEditingController();
   late Future<List<InvItem>> _future;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = InvDb.all();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _q.dispose();
     super.dispose();
   }
 
   void _reload() => setState(() => _future = InvDb.all(query: _q.text));
+
+  bool _navBusy = false;
+
+  Future<void> _openInput([InvItem? existing]) async {
+    if (_navBusy) return;
+    _navBusy = true;
+    try {
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => InputScreen(existing: existing)));
+    } finally {
+      _navBusy = false;
+    }
+    if (!mounted) return;
+    _reload();
+  }
 
   String _rp(int n) => 'Rp ${n.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
@@ -43,6 +65,13 @@ class _ListScreenState extends State<ListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tani Inventaris'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Muat ulang',
+            onPressed: _reload,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -176,6 +205,7 @@ class _ListScreenState extends State<ListScreen> {
                         _reload();
                       },
                       child: ListTile(
+                        onTap: () => _openInput(it),
                         leading: thumb != null && File(thumb).existsSync()
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
@@ -205,11 +235,7 @@ class _ListScreenState extends State<ListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
-              builder: (_) => const InputScreen()));
-          if (saved == true) _reload();
-        },
+        onPressed: () => _openInput(),
         icon: const Icon(Icons.add),
         label: const Text('Catat'),
       ),
