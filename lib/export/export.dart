@@ -9,8 +9,41 @@ import '../models/item.dart';
 
 /// Generator export murni (tanpa plugin platform) agar bisa diuji di host.
 /// Kolom: No, Nama, Jenis, Ukuran, Harga (Rp), Foto, Dibuat.
-List<String> get exportHeader =>
-    ['No', 'Nama', 'Jenis', 'Ukuran', 'Harga (Rp)', 'Foto', 'Dibuat'];
+const _headers = {
+  'id': [
+    'No',
+    'Nama',
+    'Jenis',
+    'Ukuran',
+    'Harga (Rp)',
+    'Foto',
+    'Dibuat',
+    'Stok',
+    'SKU',
+    'Lokasi'
+  ],
+  'en': [
+    'No',
+    'Name',
+    'Type',
+    'Size',
+    'Price (Rp)',
+    'Photos',
+    'Created',
+    'Stock',
+    'SKU',
+    'Location'
+  ],
+};
+
+List<String> exportHeader([String lang = 'id']) =>
+    _headers[lang] ?? _headers['id']!;
+
+String _exportedLine(String lang, int n) {
+  final unit = lang == 'en' ? (n == 1 ? 'item' : 'items') : 'item';
+  final head = lang == 'en' ? 'Exported' : 'Diekspor';
+  return '$head ${_fmtDate(DateTime.now())} - $n $unit';
+}
 
 String _fmtDate(DateTime d) {
   final l = d.toLocal();
@@ -28,6 +61,9 @@ List<List<Object>> _rows(List<InvItem> items) => [
           items[i].hargaRp,
           items[i].photoPaths.length,
           _fmtDate(items[i].createdAt),
+          items[i].stok,
+          items[i].sku,
+          items[i].lokasi,
         ],
     ];
 
@@ -39,10 +75,10 @@ String exportFileName(String ext) {
 }
 
 /// XLSX via excel_plus. Harga dan No sebagai angka (bukan teks).
-Uint8List buildXlsx(List<InvItem> items) {
+Uint8List buildXlsx(List<InvItem> items, {String lang = 'id'}) {
   final excel = Excel.createExcel();
   final sheet = excel['Sheet1'];
-  final head = exportHeader;
+  final head = exportHeader(lang);
   for (var c = 0; c < head.length; c++) {
     sheet
         .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
@@ -63,7 +99,7 @@ Uint8List buildXlsx(List<InvItem> items) {
 }
 
 /// PDF satu tabel + judul.
-Future<Uint8List> buildPdf(List<InvItem> items) async {
+Future<Uint8List> buildPdf(List<InvItem> items, {String lang = 'id'}) async {
   final doc = pw.Document();
   doc.addPage(
     pw.MultiPage(
@@ -71,11 +107,11 @@ Future<Uint8List> buildPdf(List<InvItem> items) async {
           style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
       build: (_) => [
         pw.TableHelper.fromTextArray(
-          headers: exportHeader,
+          headers: exportHeader(lang),
           data: _rows(items).map((r) => r.map((v) => v.toString()).toList()).toList(),
         ),
         pw.SizedBox(height: 12),
-        pw.Text('Diekspor ${_fmtDate(DateTime.now())} - ${items.length} item',
+        pw.Text(_exportedLine(lang, items.length),
             style: const pw.TextStyle(fontSize: 10)),
       ],
     ),
@@ -94,7 +130,7 @@ String _cell(String text, {bool bold = false}) =>
     '<w:t xml:space="preserve">${_esc(text)}</w:t></w:r></w:p></w:tc>';
 
 /// DOCX minimal valid (zip + document.xml tulis-tangan, tanpa template).
-Uint8List buildDocx(List<InvItem> items) {
+Uint8List buildDocx(List<InvItem> items, {String lang = 'id'}) {
   const borders = '<w:tblBorders><w:top w:val="single" w:sz="4"/>'
       '<w:left w:val="single" w:sz="4"/><w:bottom w:val="single" w:sz="4"/>'
       '<w:right w:val="single" w:sz="4"/><w:insideH w:val="single" w:sz="4"/>'
@@ -105,7 +141,7 @@ Uint8List buildDocx(List<InvItem> items) {
         '<w:body><w:p><w:r><w:rPr><w:b/><w:sz w:val="36"/></w:rPr>'
         '<w:t xml:space="preserve">Tani Inventaris</w:t></w:r></w:p>'
         '<w:tbl><w:tblPr>$borders</w:tblPr><w:tr>');
-  for (final h in exportHeader) {
+  for (final h in exportHeader(lang)) {
     buf.write(_cell(h, bold: true));
   }
   buf.write('</w:tr>');
@@ -117,7 +153,7 @@ Uint8List buildDocx(List<InvItem> items) {
     buf.write('</w:tr>');
   }
   buf.write('</w:tbl><w:p><w:r><w:t xml:space="preserve">'
-      'Diekspor ${_fmtDate(DateTime.now())} - ${items.length} item'
+      '${_exportedLine(lang, items.length)}'
       '</w:t></w:r></w:p><w:sectPr/></w:body></w:document>');
 
   const contentTypes =

@@ -12,6 +12,9 @@ class InvItem {
   final String? voicePath;
   final String source;
   final DateTime createdAt;
+  final int stok;
+  final String sku;
+  final String lokasi;
 
   const InvItem({
     this.id,
@@ -23,6 +26,9 @@ class InvItem {
     this.voicePath,
     this.source = 'manual',
     required this.createdAt,
+    this.stok = 0,
+    this.sku = '',
+    this.lokasi = '',
   });
 
   Map<String, Object?> toMap() => {
@@ -35,6 +41,9 @@ class InvItem {
         'voicePath': voicePath,
         'source': source,
         'createdAt': createdAt.toIso8601String(),
+        'stok': stok,
+        'sku': sku,
+        'lokasi': lokasi,
       };
 
   static InvItem fromMap(Map<String, Object?> m) => InvItem(
@@ -48,5 +57,8 @@ class InvItem {
         voicePath: m['voicePath'] as String?,
         source: (m['source'] ?? 'manual') as String,
         createdAt: DateTime.parse((m['createdAt'] ?? '') as String),
+        stok: (m['stok'] ?? 0) as int,
+        sku: (m['sku'] ?? '') as String,
+        lokasi: (m['lokasi'] ?? '') as String,
       );
 }

@@ -36,6 +36,10 @@ void main() {
         'Monstera Test');
     expect(sheet.cell(CellIndex.indexByString('B3')).value.toString(),
         'Agave & Co <uji>');
+    expect(sheet.cell(CellIndex.indexByString('H1')).value.toString(), 'Stok');
+    final en = Excel.decodeBytes(buildXlsx(_sample(), lang: 'en'));
+    expect(en['Sheet1'].cell(CellIndex.indexByString('B1')).value.toString(),
+        'Name');
   });
 
   test('pdf diawali magic %PDF', () async {

@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:tani_inventaris/l10n/app_localizations.dart';
 
 import '../db/database.dart';
 import '../export/export.dart';
+import '../i18n/locale.dart';
 import '../models/item.dart';
 import 'input_screen.dart';
 
@@ -27,6 +29,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    InvDb.revision.addListener(_onRev);
     _future = InvDb.all();
   }
 
@@ -37,12 +40,25 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    InvDb.revision.removeListener(_onRev);
     WidgetsBinding.instance.removeObserver(this);
     _q.dispose();
     super.dispose();
   }
 
-  void _reload() => setState(() => _future = InvDb.all(query: _q.text));
+  void _reload() {
+    // Jangan kembalikan Future dari closure setState (arrow `=>` dengan
+    // assignment Future melempar di debug dan rebuild tidak terjadwal).
+    final future = InvDb.all(query: _q.text);
+    setState(() {
+      _future = future;
+    });
+  }
+
+  void _onRev() {
+    if (!mounted) return;
+    _reload();
+  }
 
   bool _navBusy = false;
 
@@ -60,6 +76,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _exportMenu() async {
+    final t = AppLocalizations.of(context)!;
     final fmt = await showModalBottomSheet<String>(
       context: context,
       builder: (c) => SafeArea(
@@ -70,7 +87,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
               ListTile(
                 leading: const Icon(Icons.description_outlined),
                 title: Text(f.toUpperCase()),
-                subtitle: Text('Inventaris lengkap sebagai .$f'),
+                subtitle: Text(t.exportAs(f)),
                 onTap: () => Navigator.of(c).pop(f),
               ),
           ],
@@ -83,14 +100,15 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       if (items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Belum ada data untuk diekspor.')));
+            SnackBar(content: Text(t.exportEmpty)));
         return;
       }
+      final lang = Localizations.localeOf(context).languageCode;
       final bytes = fmt == 'pdf'
-          ? await buildPdf(items)
+          ? await buildPdf(items, lang: lang)
           : fmt == 'docx'
-              ? buildDocx(items)
-              : buildXlsx(items);
+              ? buildDocx(items, lang: lang)
+              : buildXlsx(items, lang: lang);
       final dir = await getTemporaryDirectory();
       if (!mounted) return;
       final path = p.join(dir.path, exportFileName(fmt));
@@ -98,35 +116,47 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
       await SharePlus.instance.share(ShareParams(files: [XFile(path)]));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dibagikan: ${p.basename(path)}')));
+          SnackBar(content: Text(t.exportedAs(p.basename(path)))));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal mengekspor: $e')));
+          .showSnackBar(SnackBar(content: Text(t.exportFailed('$e'))));
     }
   }
 
   String _rp(int n) => 'Rp ${n.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
 
-  String _count(int n) =>
-      n == 0 ? 'Belum ada item' : n == 1 ? '1 item' : '$n item';
+  String _count(AppLocalizations t, int n) =>
+      n == 0 ? t.countZero : n == 1 ? t.countOne : t.countMany(n);
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tani Inventaris'),
+        title: Text(t.appTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Muat ulang',
+            tooltip: t.reloadTip,
             onPressed: _reload,
           ),
           IconButton(
             icon: const Icon(Icons.ios_share),
-            tooltip: 'Ekspor',
+            tooltip: t.exportTip,
             onPressed: _exportMenu,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            tooltip: t.language,
+            onSelected: (v) =>
+                setLocale(v == 'system' ? null : Locale(v)),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'system', child: Text(t.langSystem)),
+              PopupMenuItem(value: 'id', child: Text(t.langIndonesian)),
+              PopupMenuItem(value: 'en', child: Text(t.langEnglish)),
+            ],
           ),
         ],
         bottom: PreferredSize(
@@ -135,7 +165,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: SearchBar(
               controller: _q,
-              hintText: 'Cari nama / jenis…',
+              hintText: t.searchHint,
               leading: const Icon(Icons.search),
               trailing: _q.text.isEmpty
                   ? null
@@ -167,9 +197,9 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                   children: [
                     const Icon(Icons.error_outline, size: 40),
                     const SizedBox(height: 8),
-                    Text('Gagal memuat: ${snap.error}'),
+                    Text(t.loadError('${snap.error}')),
                     TextButton(
-                        onPressed: _reload, child: const Text('Coba lagi')),
+                        onPressed: _reload, child: Text(t.retry)),
                   ],
                 ),
               ),
@@ -192,16 +222,16 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
                     Text(
                       searching
-                          ? 'Tidak ada hasil untuk "${_q.text.trim()}"'
-                          : 'Belum ada tanaman tercatat.',
+                          ? t.noResultsFor(_q.text.trim())
+                          : t.emptyTitle,
                       style: Theme.of(context).textTheme.titleMedium,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       searching
-                          ? 'Coba kata kunci lain atau hapus filter.'
-                          : 'Ketuk + untuk mencatat tanaman pertama.',
+                          ? t.emptyFilteredHint
+                          : t.emptyFirstHint,
                       style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -215,7 +245,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: Text(_count(items.length),
+                child: Text(_count(t, items.length),
                     style: Theme.of(context).textTheme.bodySmall),
               ),
               Expanded(
@@ -240,18 +270,17 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                         final ok = await showDialog<bool>(
                           context: context,
                           builder: (d) => AlertDialog(
-                            title: const Text('Hapus item?'),
-                            content: Text(
-                                '"${it.nama}" akan dihapus permanen.'),
+                            title: Text(t.deleteTitle),
+                            content: Text(t.deleteBody(it.nama)),
                             actions: [
                               TextButton(
                                   onPressed: () =>
                                       Navigator.of(d).pop(false),
-                                  child: const Text('Batal')),
+                                  child: Text(t.cancel)),
                               FilledButton(
                                   onPressed: () =>
                                       Navigator.of(d).pop(true),
-                                  child: const Text('Hapus')),
+                                  child: Text(t.deleteConfirm)),
                             ],
                           ),
                         );
@@ -259,7 +288,6 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                       },
                       onDismissed: (_) async {
                         if (it.id != null) await InvDb.remove(it.id!);
-                        _reload();
                       },
                       child: ListTile(
                         onTap: () => _openInput(it),
@@ -274,8 +302,11 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                             : const Icon(Icons.spa_outlined),
                         title: Text(it.nama),
                         subtitle: Text(
-                            '${it.jenis.isEmpty ? '-' : it.jenis} · ${it.ukuran.isEmpty ? '-' : it.ukuran}'
-                            '${it.voicePath != null ? ' · voice' : ''}'),
+                            '${it.jenis.isEmpty ? t.missingValue : it.jenis} · ${it.ukuran.isEmpty ? t.missingValue : it.ukuran}\n'
+                            '${t.stockLine(it.stok)}'
+                            '${it.sku.isEmpty ? '' : ' · ${it.sku}'}'
+                            '${it.lokasi.isEmpty ? '' : ' · ${it.lokasi}'}'
+                            '${it.voicePath != null ? ' · ${t.voiceTag}' : ''}'),
                         trailing: Text(
                           _rp(it.hargaRp),
                           style: const TextStyle(
@@ -294,7 +325,7 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openInput(),
         icon: const Icon(Icons.add),
-        label: const Text('Catat'),
+        label: Text(t.fabAdd),
       ),
     );
   }

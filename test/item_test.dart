@@ -13,6 +13,9 @@ void main() {
       voicePath: 'v.m4a',
       source: 'manual',
       createdAt: DateTime.utc(2026, 11, 5, 1, 2, 3),
+      stok: 12,
+      sku: 'AGV-001',
+      lokasi: 'Blok A',
     );
     final back = InvItem.fromMap(item.toMap());
     expect(back.id, 7);
@@ -24,6 +27,9 @@ void main() {
     expect(back.voicePath, 'v.m4a');
     expect(back.source, 'manual');
     expect(back.createdAt, DateTime.utc(2026, 11, 5, 1, 2, 3));
+    expect(back.stok, 12);
+    expect(back.sku, 'AGV-001');
+    expect(back.lokasi, 'Blok A');
   });
 
   test('fromMap memberi default utk kunci opsional yang hilang', () {
@@ -39,5 +45,8 @@ void main() {
     expect(back.photoPaths, isEmpty);
     expect(back.voicePath, isNull);
     expect(back.source, 'manual');
+    expect(back.stok, 0);
+    expect(back.sku, '');
+    expect(back.lokasi, '');
   });
 }

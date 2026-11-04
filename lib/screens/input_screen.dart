@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:tani_inventaris/l10n/app_localizations.dart';
 
 import '../db/database.dart';
 import '../models/item.dart';
@@ -41,6 +42,9 @@ class _InputScreenState extends State<InputScreen> {
   final _jenis = TextEditingController();
   final _ukuran = TextEditingController();
   final _harga = TextEditingController();
+  final _stok = TextEditingController();
+  final _sku = TextEditingController();
+  final _lokasi = TextEditingController();
   bool _saving = false;
 
   @override
@@ -52,6 +56,9 @@ class _InputScreenState extends State<InputScreen> {
       _jenis.text = ex.jenis;
       _ukuran.text = ex.ukuran;
       _harga.text = _fmtRp(ex.hargaRp.toString());
+      _stok.text = ex.stok.toString();
+      _sku.text = ex.sku;
+      _lokasi.text = ex.lokasi;
       _photos.addAll(ex.photoPaths);
       _voicePath = ex.voicePath;
     }
@@ -62,7 +69,7 @@ class _InputScreenState extends State<InputScreen> {
     try {
       final cams = await availableCameras();
       if (cams.isEmpty) {
-        setState(() => _camError = 'Tidak ada kamera di perangkat ini.');
+        setState(() => _camError = 'noCamera');
         return;
       }
       final ctrl = CameraController(
@@ -79,8 +86,8 @@ class _InputScreenState extends State<InputScreen> {
     } on CameraException catch (e) {
       if (!mounted) return;
       setState(() => _camError = e.code == 'CameraAccessDenied'
-          ? 'Izin kamera ditolak. Buka Pengaturan > Aplikasi > Tani Inventaris > Izin, lalu coba lagi.'
-          : 'Kamera gagal dibuka: ${e.description ?? e.code}');
+          ? 'denied'
+          : 'failed:${e.description ?? e.code}');
     }
   }
 
@@ -93,6 +100,9 @@ class _InputScreenState extends State<InputScreen> {
     _jenis.dispose();
     _ukuran.dispose();
     _harga.dispose();
+    _stok.dispose();
+    _sku.dispose();
+    _lokasi.dispose();
     super.dispose();
   }
 
@@ -130,8 +140,9 @@ class _InputScreenState extends State<InputScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal mengambil gambar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.captureFailed('$e'))));
       }
     }
   }
@@ -147,8 +158,9 @@ class _InputScreenState extends State<InputScreen> {
     } else {
       if (!await _rec.hasPermission()) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Izin mikrofon ditolak. Aktifkan di Pengaturan.')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.micDenied)));
         }
         return;
       }
@@ -167,6 +179,20 @@ class _InputScreenState extends State<InputScreen> {
     }
   }
 
+  String _camErrorText(AppLocalizations t) {
+    final e = _camError;
+    if (e == null) return '';
+    if (e == 'noCamera') return t.noCamera;
+    if (e == 'denied') return t.camDenied;
+    if (e.startsWith('failed:')) return t.camFailed(e.substring(7));
+    return e;
+  }
+
+  void _bumpStok(int delta) {
+    final cur = int.tryParse(_stok.text) ?? 0;
+    setState(() => _stok.text = (cur + delta).clamp(0, 999999).toString());
+  }
+
   String _fmtRp(String digits) {
     final n = int.tryParse(digits.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     return n.toString().replaceAllMapped(
@@ -177,7 +203,7 @@ class _InputScreenState extends State<InputScreen> {
     if (_saving) return;
     if (_nama.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Isi nama tanaman dulu.')));
+          SnackBar(content: Text(AppLocalizations.of(context)!.nameRequired)));
       return;
     }
     setState(() => _saving = true);
@@ -194,6 +220,9 @@ class _InputScreenState extends State<InputScreen> {
             int.tryParse(_harga.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
         photoPaths: media,
         voicePath: _voicePath,
+        stok: int.tryParse(_stok.text) ?? 0,
+        sku: _sku.text.trim(),
+        lokasi: _lokasi.text.trim(),
         source: ex?.source ?? 'manual',
         createdAt: ex?.createdAt ?? DateTime.now(),
       );
@@ -205,8 +234,9 @@ class _InputScreenState extends State<InputScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:
+              Text(AppLocalizations.of(context)!.saveFailed('$e'))));
       return;
     }
     if (!mounted) return;
@@ -216,12 +246,14 @@ class _InputScreenState extends State<InputScreen> {
   @override
   Widget build(BuildContext context) {
     final cam = _cam;
+    final t = AppLocalizations.of(context)!;
     return PopScope(
       canPop: !_saving,
       child: Scaffold(
       appBar: AppBar(
-          title: Text(
-              widget.existing == null ? 'Catat Tanaman' : 'Ubah Tanaman')),
+          title: Text(widget.existing == null
+              ? t.inputTitleNew
+              : t.inputTitleEdit)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
@@ -240,12 +272,12 @@ class _InputScreenState extends State<InputScreen> {
                             children: [
                               const Icon(Icons.no_photography_outlined),
                               const SizedBox(height: 8),
-                              Text(_camError!,
+                              Text(_camErrorText(t),
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodySmall),
                               TextButton(
                                   onPressed: _initCamera,
-                                  child: const Text('Coba lagi')),
+                                  child: Text(t.retry)),
                             ],
                           ),
                         ),
@@ -267,14 +299,14 @@ class _InputScreenState extends State<InputScreen> {
           Row(
             children: [
               SegmentedButton<bool>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                       value: false,
-                      label: Text('Foto'),
+                      label: Text(t.modePhoto),
                       icon: Icon(Icons.photo_camera_outlined)),
                   ButtonSegment(
                       value: true,
-                      label: Text('Video'),
+                      label: Text(t.modeVideo),
                       icon: Icon(Icons.videocam_outlined)),
                 ],
                 selected: {_videoMode},
@@ -289,8 +321,8 @@ class _InputScreenState extends State<InputScreen> {
                     ? Icons.stop
                     : Icons.fiber_manual_record),
                 label: Text(_videoMode
-                    ? (_recordingVideo ? 'Stop' : 'Rekam')
-                    : 'Jepret (${_photos.length})'),
+                    ? (_recordingVideo ? t.videoStop : t.videoRecord)
+                    : t.snapCount(_photos.length)),
               ),
             ],
           ),
@@ -339,20 +371,22 @@ class _InputScreenState extends State<InputScreen> {
                   : null,
             ),
             title: Text(_recordingVoice
-                ? 'Merekam… $_voiceSecs dtk (sebut nama, ukuran, harga)'
+                ? t.voiceRecording(_voiceSecs)
                 : _voicePath != null
-                    ? 'Voice-note tersimpan (${_voiceSecs > 0 ? '$_voiceSecs dtk' : 'siap'})'
-                    : 'Rekam voice-note (nama, ukuran, harga)'),
+                    ? (_voiceSecs > 0
+                        ? t.voiceSavedSecs(_voiceSecs)
+                        : t.voiceSavedReady)
+                    : t.voicePrompt),
             subtitle: _recordingVoice
-                ? const Text('Ketuk stop bila selesai')
+                ? Text(t.voiceStopHint)
                 : null,
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _nama,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-                labelText: 'Nama tanaman', hintText: 'mis. Agave victoria'),
+            decoration: InputDecoration(
+                labelText: t.fieldName, hintText: t.fieldNameHint),
           ),
           const SizedBox(height: 8),
           Row(
@@ -361,16 +395,16 @@ class _InputScreenState extends State<InputScreen> {
                 child: TextField(
                   controller: _jenis,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                      labelText: 'Jenis', hintText: 'mis. Hias'),
+                  decoration: InputDecoration(
+                      labelText: t.fieldType, hintText: t.fieldTypeHint),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _ukuran,
-                  decoration: const InputDecoration(
-                      labelText: 'Ukuran', hintText: 'mis. Pot 20 cm'),
+                  decoration: InputDecoration(
+                      labelText: t.fieldSize, hintText: t.fieldSizeHint),
                 ),
               ),
             ],
@@ -387,11 +421,58 @@ class _InputScreenState extends State<InputScreen> {
                   selection:
                       TextSelection.collapsed(offset: f.length));
             },
-            decoration: const InputDecoration(
-              labelText: 'Harga (Rp)',
+            decoration: InputDecoration(
+              labelText: t.fieldPrice,
               prefixText: 'Rp ',
-              hintText: 'mis. 50.000',
+              hintText: t.fieldPriceHint,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _stok,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                      labelText: t.fieldStock, hintText: t.fieldStockHint),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.remove),
+                tooltip: t.stockDown,
+                onPressed: () => _bumpStok(-1),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: t.stockUp,
+                onPressed: () => _bumpStok(1),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _sku,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                      labelText: t.fieldSku, hintText: t.fieldSkuHint),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _lokasi,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                      labelText: t.fieldLocation,
+                      hintText: t.fieldLocationHint),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           FilledButton(
@@ -399,15 +480,13 @@ class _InputScreenState extends State<InputScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(_saving
-                  ? 'Menyimpan…'
-                  : (widget.existing == null
-                      ? 'Simpan ke Inventaris'
-                      : 'Simpan Perubahan')),
+                  ? t.saving
+                  : (widget.existing == null ? t.saveNew : t.saveEdit)),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Fase 1: AI mati. Nama, jenis, ukuran, dan harga diisi manual. Fase 2: AI mengisi otomatis dari foto + voice.',
+            t.phaseNote,
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
