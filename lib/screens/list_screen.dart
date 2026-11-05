@@ -11,7 +11,10 @@ import '../db/database.dart';
 import '../export/export.dart';
 import '../i18n/locale.dart';
 import '../models/item.dart';
+import 'history_screen.dart';
 import 'input_screen.dart';
+import 'qr_label.dart';
+import 'scan_screen.dart';
 
 /// Daftar inventaris: rows (bukan card-soup), search, hitung 0/1/N.
 class ListScreen extends StatefulWidget {
@@ -24,6 +27,7 @@ class ListScreen extends StatefulWidget {
 class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
   final _q = TextEditingController();
   late Future<List<InvItem>> _future;
+  bool _lowOnly = false;
 
   @override
   void initState() {
@@ -73,6 +77,38 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     _reload();
+  }
+
+  Future<void> _openScan() async {
+    if (_navBusy) return;
+    _navBusy = true;
+    InvItem? found;
+    try {
+      found = await Navigator.of(context).push<InvItem>(
+          MaterialPageRoute(builder: (_) => const ScanScreen()));
+    } finally {
+      _navBusy = false;
+    }
+    if (!mounted || found == null) return;
+    _openInput(found);
+  }
+
+  Future<void> _openHistory(InvItem item) async {
+    if (_navBusy) return;
+    _navBusy = true;
+    try {
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => HistoryScreen(item: item)));
+    } finally {
+      _navBusy = false;
+    }
+  }
+
+  Future<void> _openQrLabel(InvItem item) async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (_) => QrLabelSheet(item: item),
+    );
   }
 
   Future<void> _exportMenu() async {
@@ -137,6 +173,11 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
       appBar: AppBar(
         title: Text(t.appTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: t.scanTitle,
+            onPressed: _openScan,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: t.reloadTip,
@@ -205,8 +246,8 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
               ),
             );
           }
-          final items = snap.data ?? [];
-          if (items.isEmpty) {
+          final allItems = snap.data ?? [];
+          if (allItems.isEmpty) {
             final searching = _q.text.trim().isNotEmpty;
             return Center(
               child: Padding(
@@ -240,13 +281,30 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
               ),
             );
           }
+          final lowCount =
+              allItems.where((e) => e.isLowStock).length;
+          final items = _lowOnly
+              ? allItems.where((e) => e.isLowStock).toList()
+              : allItems;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: Text(_count(t, items.length),
-                    style: Theme.of(context).textTheme.bodySmall),
+                child: Row(
+                  children: [
+                    Text(_count(t, items.length),
+                        style: Theme.of(context).textTheme.bodySmall),
+                    if (lowCount > 0) ...[
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        label: Text(t.lowStockChip(lowCount)),
+                        selected: _lowOnly,
+                        onSelected: (v) => setState(() => _lowOnly = v),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               Expanded(
                 child: ListView.separated(
@@ -301,17 +359,66 @@ class _ListScreenState extends State<ListScreen> with WidgetsBindingObserver {
                               )
                             : const Icon(Icons.spa_outlined),
                         title: Text(it.nama),
-                        subtitle: Text(
-                            '${it.jenis.isEmpty ? t.missingValue : it.jenis} · ${it.ukuran.isEmpty ? t.missingValue : it.ukuran}\n'
-                            '${t.stockLine(it.stok)}'
-                            '${it.sku.isEmpty ? '' : ' · ${it.sku}'}'
-                            '${it.lokasi.isEmpty ? '' : ' · ${it.lokasi}'}'
-                            '${it.voicePath != null ? ' · ${t.voiceTag}' : ''}'),
-                        trailing: Text(
-                          _rp(it.hargaRp),
-                          style: const TextStyle(
-                              fontFeatures: [FontFeature.tabularFigures()],
-                              fontWeight: FontWeight.w600),
+                        subtitle: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                                text:
+                                    '${it.jenis.isEmpty ? t.missingValue : it.jenis} · ${it.ukuran.isEmpty ? t.missingValue : it.ukuran}\n'
+                                    '${t.stockLine(it.stok)}'),
+                            if (it.isLowStock)
+                              TextSpan(
+                                text: ' · ${t.lowStockTag}',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .error,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            TextSpan(
+                                text:
+                                    '${it.sku.isEmpty ? '' : ' · ${it.sku}'}'
+                                    '${it.lokasi.isEmpty ? '' : ' · ${it.lokasi}'}'
+                                    '${it.voicePath != null ? ' · ${t.voiceTag}' : ''}'),
+                          ]),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _rp(it.hargaRp),
+                              style: const TextStyle(
+                                  fontFeatures: [
+                                    FontFeature.tabularFigures()
+                                  ],
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert),
+                              onSelected: (v) => v == 'history'
+                                  ? _openHistory(it)
+                                  : _openQrLabel(it),
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                  value: 'history',
+                                  child: ListTile(
+                                    leading:
+                                        const Icon(Icons.history),
+                                    title: Text(t.menuHistory),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'qr',
+                                  child: ListTile(
+                                    leading: const Icon(
+                                        Icons.qr_code_2),
+                                    title: Text(t.menuQr),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     );

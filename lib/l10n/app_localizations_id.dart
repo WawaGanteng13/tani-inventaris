@@ -242,4 +242,98 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get phaseNote =>
       'Fase 1: AI mati. Nama, jenis, ukuran, dan harga diisi manual. Fase 2: AI mengisi otomatis dari foto + voice.';
+
+  @override
+  String lowStockChip(int n) {
+    return 'Stok menipis ($n)';
+  }
+
+  @override
+  String get lowStockTag => 'menipis';
+
+  @override
+  String get fieldStockMin => 'Stok minimum (opsional)';
+
+  @override
+  String get fieldStockMinHint => 'mis. 5, 0 = mati';
+
+  @override
+  String get historyTitle => 'Riwayat Stok';
+
+  @override
+  String get historyEmpty => 'Belum ada mutasi tercatat.';
+
+  @override
+  String get mutSeed => 'Stok awal';
+
+  @override
+  String get mutIn => 'Masuk';
+
+  @override
+  String get mutOut => 'Keluar';
+
+  @override
+  String get mutAdjust => 'Penyesuaian';
+
+  @override
+  String get mutRecordTitle => 'Catat Mutasi';
+
+  @override
+  String get mutQty => 'Jumlah';
+
+  @override
+  String get mutNote => 'Catatan (opsional)';
+
+  @override
+  String get mutSave => 'Catat';
+
+  @override
+  String get mutRecorded => 'Mutasi tercatat.';
+
+  @override
+  String get mutTypeIn => 'Masuk';
+
+  @override
+  String get mutTypeOut => 'Keluar';
+
+  @override
+  String get menuHistory => 'Riwayat stok';
+
+  @override
+  String get menuQr => 'Label QR';
+
+  @override
+  String get qrTitle => 'Label QR';
+
+  @override
+  String get qrShare => 'Bagikan';
+
+  @override
+  String qrShareFail(String e) {
+    return 'Gagal membagikan: $e';
+  }
+
+  @override
+  String get scanTitle => 'Pindai QR';
+
+  @override
+  String get scanHint => 'Arahkan kamera ke label QR item';
+
+  @override
+  String get scanInvalid => 'QR ini bukan label Tani Inventaris.';
+
+  @override
+  String scanNotFound(int id) {
+    return 'Item id $id tidak ditemukan.';
+  }
+
+  @override
+  String scanFound(String nama) {
+    return 'Ditemukan: $nama';
+  }
+
+  @override
+  String scanError(String e) {
+    return 'Kamera pindai gagal: $e';
+  }
 }

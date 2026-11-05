@@ -243,4 +243,98 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get phaseNote =>
       'Phase 1: AI off. Name, type, size, and price are entered manually. Phase 2: AI fills them in from photo + voice.';
+
+  @override
+  String lowStockChip(int n) {
+    return 'Low stock ($n)';
+  }
+
+  @override
+  String get lowStockTag => 'low';
+
+  @override
+  String get fieldStockMin => 'Minimum stock (optional)';
+
+  @override
+  String get fieldStockMinHint => 'e.g. 5, 0 = off';
+
+  @override
+  String get historyTitle => 'Stock history';
+
+  @override
+  String get historyEmpty => 'No movements recorded yet.';
+
+  @override
+  String get mutSeed => 'Opening stock';
+
+  @override
+  String get mutIn => 'Stock in';
+
+  @override
+  String get mutOut => 'Stock out';
+
+  @override
+  String get mutAdjust => 'Adjustment';
+
+  @override
+  String get mutRecordTitle => 'Record movement';
+
+  @override
+  String get mutQty => 'Quantity';
+
+  @override
+  String get mutNote => 'Note (optional)';
+
+  @override
+  String get mutSave => 'Record';
+
+  @override
+  String get mutRecorded => 'Movement recorded.';
+
+  @override
+  String get mutTypeIn => 'In';
+
+  @override
+  String get mutTypeOut => 'Out';
+
+  @override
+  String get menuHistory => 'Stock history';
+
+  @override
+  String get menuQr => 'QR label';
+
+  @override
+  String get qrTitle => 'QR label';
+
+  @override
+  String get qrShare => 'Share';
+
+  @override
+  String qrShareFail(String e) {
+    return 'Could not share: $e';
+  }
+
+  @override
+  String get scanTitle => 'Scan QR';
+
+  @override
+  String get scanHint => 'Point the camera at an item QR label';
+
+  @override
+  String get scanInvalid => 'This QR is not a Tani Inventaris label.';
+
+  @override
+  String scanNotFound(int id) {
+    return 'Item id $id not found.';
+  }
+
+  @override
+  String scanFound(String nama) {
+    return 'Found: $nama';
+  }
+
+  @override
+  String scanError(String e) {
+    return 'Scan camera failed: $e';
+  }
 }

@@ -43,6 +43,7 @@ class _InputScreenState extends State<InputScreen> {
   final _ukuran = TextEditingController();
   final _harga = TextEditingController();
   final _stok = TextEditingController();
+  final _stokMin = TextEditingController();
   final _sku = TextEditingController();
   final _lokasi = TextEditingController();
   bool _saving = false;
@@ -57,6 +58,7 @@ class _InputScreenState extends State<InputScreen> {
       _ukuran.text = ex.ukuran;
       _harga.text = _fmtRp(ex.hargaRp.toString());
       _stok.text = ex.stok.toString();
+      _stokMin.text = ex.stokMin.toString();
       _sku.text = ex.sku;
       _lokasi.text = ex.lokasi;
       _photos.addAll(ex.photoPaths);
@@ -101,6 +103,7 @@ class _InputScreenState extends State<InputScreen> {
     _ukuran.dispose();
     _harga.dispose();
     _stok.dispose();
+    _stokMin.dispose();
     _sku.dispose();
     _lokasi.dispose();
     super.dispose();
@@ -221,6 +224,7 @@ class _InputScreenState extends State<InputScreen> {
         photoPaths: media,
         voicePath: _voicePath,
         stok: int.tryParse(_stok.text) ?? 0,
+        stokMin: int.tryParse(_stokMin.text) ?? 0,
         sku: _sku.text.trim(),
         lokasi: _lokasi.text.trim(),
         source: ex?.source ?? 'manual',
@@ -450,6 +454,14 @@ class _InputScreenState extends State<InputScreen> {
                 onPressed: () => _bumpStok(1),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _stokMin,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+                labelText: t.fieldStockMin, hintText: t.fieldStockMinHint),
           ),
           const SizedBox(height: 8),
           Row(

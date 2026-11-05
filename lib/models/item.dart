@@ -16,6 +16,9 @@ class InvItem {
   final String sku;
   final String lokasi;
 
+  /// Ambang peringatan stok menipis. 0 = peringatan mati.
+  final int stokMin;
+
   const InvItem({
     this.id,
     required this.nama,
@@ -29,7 +32,11 @@ class InvItem {
     this.stok = 0,
     this.sku = '',
     this.lokasi = '',
+    this.stokMin = 0,
   });
+
+  /// True bila ambang dipasang dan stok sudah menyentuh/melewatinya.
+  bool get isLowStock => stokMin > 0 && stok <= stokMin;
 
   Map<String, Object?> toMap() => {
         'id': id,
@@ -44,6 +51,7 @@ class InvItem {
         'stok': stok,
         'sku': sku,
         'lokasi': lokasi,
+        'stokMin': stokMin,
       };
 
   static InvItem fromMap(Map<String, Object?> m) => InvItem(
@@ -60,5 +68,6 @@ class InvItem {
         stok: (m['stok'] ?? 0) as int,
         sku: (m['sku'] ?? '') as String,
         lokasi: (m['lokasi'] ?? '') as String,
+        stokMin: (m['stokMin'] ?? 0) as int,
       );
 }

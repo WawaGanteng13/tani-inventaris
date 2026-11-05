@@ -16,6 +16,7 @@ void main() {
       stok: 12,
       sku: 'AGV-001',
       lokasi: 'Blok A',
+      stokMin: 5,
     );
     final back = InvItem.fromMap(item.toMap());
     expect(back.id, 7);
@@ -30,6 +31,7 @@ void main() {
     expect(back.stok, 12);
     expect(back.sku, 'AGV-001');
     expect(back.lokasi, 'Blok A');
+    expect(back.stokMin, 5);
   });
 
   test('fromMap memberi default utk kunci opsional yang hilang', () {
@@ -48,5 +50,22 @@ void main() {
     expect(back.stok, 0);
     expect(back.sku, '');
     expect(back.lokasi, '');
+    expect(back.stokMin, 0);
+  });
+
+  test('isLowStock hanya true bila ambang dipasang dan tersentuh', () {
+    InvItem item({required int stok, required int stokMin}) => InvItem(
+          nama: 'X',
+          jenis: '',
+          ukuran: '',
+          hargaRp: 0,
+          createdAt: DateTime.utc(2026, 11, 5),
+          stok: stok,
+          stokMin: stokMin,
+        );
+    expect(item(stok: 3, stokMin: 5).isLowStock, isTrue);
+    expect(item(stok: 5, stokMin: 5).isLowStock, isTrue);
+    expect(item(stok: 6, stokMin: 5).isLowStock, isFalse);
+    expect(item(stok: 0, stokMin: 0).isLowStock, isFalse);
   });
 }

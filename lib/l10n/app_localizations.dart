@@ -505,6 +505,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Phase 1: AI off. Name, type, size, and price are entered manually. Phase 2: AI fills them in from photo + voice.'**
   String get phaseNote;
+
+  /// No description provided for @lowStockChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Low stock ({n})'**
+  String lowStockChip(int n);
+
+  /// No description provided for @lowStockTag.
+  ///
+  /// In en, this message translates to:
+  /// **'low'**
+  String get lowStockTag;
+
+  /// No description provided for @fieldStockMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum stock (optional)'**
+  String get fieldStockMin;
+
+  /// No description provided for @fieldStockMinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 5, 0 = off'**
+  String get fieldStockMinHint;
+
+  /// No description provided for @historyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock history'**
+  String get historyTitle;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No movements recorded yet.'**
+  String get historyEmpty;
+
+  /// No description provided for @mutSeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening stock'**
+  String get mutSeed;
+
+  /// No description provided for @mutIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock in'**
+  String get mutIn;
+
+  /// No description provided for @mutOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock out'**
+  String get mutOut;
+
+  /// No description provided for @mutAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment'**
+  String get mutAdjust;
+
+  /// No description provided for @mutRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record movement'**
+  String get mutRecordTitle;
+
+  /// No description provided for @mutQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get mutQty;
+
+  /// No description provided for @mutNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get mutNote;
+
+  /// No description provided for @mutSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get mutSave;
+
+  /// No description provided for @mutRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Movement recorded.'**
+  String get mutRecorded;
+
+  /// No description provided for @mutTypeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'In'**
+  String get mutTypeIn;
+
+  /// No description provided for @mutTypeOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Out'**
+  String get mutTypeOut;
+
+  /// No description provided for @menuHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock history'**
+  String get menuHistory;
+
+  /// No description provided for @menuQr.
+  ///
+  /// In en, this message translates to:
+  /// **'QR label'**
+  String get menuQr;
+
+  /// No description provided for @qrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'QR label'**
+  String get qrTitle;
+
+  /// No description provided for @qrShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get qrShare;
+
+  /// No description provided for @qrShareFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share: {e}'**
+  String qrShareFail(String e);
+
+  /// No description provided for @scanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR'**
+  String get scanTitle;
+
+  /// No description provided for @scanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at an item QR label'**
+  String get scanHint;
+
+  /// No description provided for @scanInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This QR is not a Tani Inventaris label.'**
+  String get scanInvalid;
+
+  /// No description provided for @scanNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Item id {id} not found.'**
+  String scanNotFound(int id);
+
+  /// No description provided for @scanFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Found: {nama}'**
+  String scanFound(String nama);
+
+  /// No description provided for @scanError.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan camera failed: {e}'**
+  String scanError(String e);
 }
 
 class _AppLocalizationsDelegate
